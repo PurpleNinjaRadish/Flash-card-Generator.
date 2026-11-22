@@ -1,0 +1,782 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Word Flash Card Maker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Lexend:wght@400;600;700&family=Merriweather:wght@400;700&family=Patrick+Hand&display=swap">
+<style>
+/* Layout: two-column workbench. Controls on the left, paper preview on the right. */
+:root{--bg:#eceef2;--panel:#f8f9fb;--ink:#161a22;--muted:#5d6575;--line:#d3d9e2;--field:#ffffff;--accent:#2b55c9;--accent-ink:#ffffff;--chip:#e3e8f0;--warn:#c2412d;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1016;--panel:#161b23;--ink:#e6e9ef;--muted:#979fae;--line:#2a313c;--field:#0d1016;--accent:#8fa9ff;--accent-ink:#0d1016;--chip:#222a36;--warn:#ff8a73;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1016;--panel:#161b23;--ink:#e6e9ef;--muted:#979fae;--line:#2a313c;--field:#0d1016;--accent:#8fa9ff;--accent-ink:#0d1016;--chip:#222a36;--warn:#ff8a73;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.app{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:18px;align-items:start;max-width:1280px;margin:0 auto}
+@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}}
+.head{max-width:1280px;margin:0 auto 18px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}
+h1{font-size:22px;margin:0;font-weight:600;letter-spacing:-.01em}
+.head p{margin:2px 0 0;color:var(--muted)}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--field);align-self:center}
+.tabs button{border:0;background:transparent;padding:7px 14px;cursor:pointer;color:var(--muted);font:inherit}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:var(--field);border-radius:999px;padding:4px 11px;cursor:pointer;color:var(--ink);font:inherit;font-size:13px}
+.chips button span{color:var(--muted);font:500 11px "IBM Plex Mono",monospace}
+.chips button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.chips button[aria-pressed="true"] span{color:var(--accent-ink)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px 14px 10px;min-width:0}
+@media (min-width:861px){.panel{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}}
+.step{padding:12px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.step:last-child{border-bottom:0}
+h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;align-items:center;gap:8px;font-weight:600}
+.n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font:600 11px "IBM Plex Mono",monospace;letter-spacing:0}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.field output{color:var(--ink);font:500 12px "IBM Plex Mono",monospace;margin-left:4px}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=number],select,textarea{background:var(--field);border:1px solid var(--line);border-radius:7px;padding:7px 9px;color:var(--ink);width:100%;min-width:0}
+textarea{resize:vertical}
+input[type=range]{accent-color:var(--accent);width:100%}
+input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-radius:7px;background:var(--field);padding:2px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+.check{display:flex;gap:8px;align-items:center;color:var(--ink);font-size:13px}
+.btn{border:1px solid var(--line);background:var(--field);border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.btn.quiet{background:transparent}
+.btn:disabled{opacity:.5;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--field);align-self:flex-start}
+.seg button{border:0;background:transparent;padding:6px 11px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.note{font-size:12.5px;color:var(--muted);margin:0;min-height:1em}
+.note.warn{color:var(--warn)}
+.spec{display:flex;gap:12px;align-items:center;background:var(--field);border:1px dashed var(--line);border-radius:10px;padding:8px}
+.spec svg{flex:none}
+.spec p{margin:0;color:var(--muted);font-size:12.5px}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+details[open] textarea{margin-top:8px}
+details .btn{margin-top:6px}
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font:500 12px "IBM Plex Mono",monospace;color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto;padding-right:2px}
+.row{display:grid;grid-template-columns:22px minmax(0,1fr) 40px 26px;gap:6px;align-items:center}
+.idx{font:500 11px "IBM Plex Mono",monospace;color:var(--muted);text-align:right}
+.fields{display:grid;gap:4px;min-width:0}
+.fields input{background:var(--field);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:13px;color:var(--ink);width:100%;min-width:0}
+.thumb{width:40px;height:40px;border:1px dashed var(--line);border-radius:7px;display:grid;place-items:center;cursor:pointer;overflow:hidden;background:var(--field);color:var(--muted);font-size:10px}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.icon{border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer;width:26px;height:26px;border-radius:6px;padding:0}
+.icon:hover{background:var(--chip);color:var(--ink)}
+.stage{min-width:0;display:flex;flex-direction:column;gap:12px}
+.summary{display:flex;flex-wrap:wrap;gap:6px 16px;font:12.5px "IBM Plex Mono",monospace;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.summary b{color:var(--ink);font-weight:500}
+.summary .warn{color:var(--warn)}
+#sheets,#wsSheets{display:flex;flex-direction:column;align-items:center;gap:30px;padding:22px 12px 12px;overflow-x:hidden}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:40px 20px;text-align:center;color:var(--muted);max-width:520px}
+.sheet-wrap{position:relative;width:8.5in;zoom:var(--z,1);flex:none}
+.label{font:500 11.5px "IBM Plex Mono",monospace;color:var(--muted);margin:0 0 8px;display:flex;justify-content:space-between}
+.sheet-row{position:relative}
+.sheet{position:relative;width:8.5in;height:11in;background:#fff;color:#14171d;box-shadow:0 1px 3px rgba(0,0,0,.28);overflow:hidden}
+.rx,.ry{position:absolute;color:var(--muted);font:500 9px "IBM Plex Mono",monospace;pointer-events:none}
+.rx{left:0;top:-16px;width:8.5in;height:14px;border-bottom:1px solid var(--muted)}
+.ry{top:0;left:-16px;height:11in;width:14px;border-right:1px solid var(--muted)}
+.rx i,.ry i{position:absolute;background:var(--muted)}
+.rx i{bottom:0;width:1px}
+.ry i{right:0;height:1px}
+.rx b{position:absolute;top:0;transform:translateX(-50%)}
+.ry b{position:absolute;right:8px;transform:translateY(-50%)}
+.safe{position:absolute;inset:.25in;border:1px dashed var(--accent);opacity:.7;pointer-events:none}
+@media print{
+  @page{size:8.5in 11in;margin:0}
+  body{background:#fff;padding:0}
+  .no-print,.head,.panel,.summary,.label{display:none!important}
+  .app{display:block;max-width:none}
+  #sheets{display:block;padding:0}
+  .sheet-wrap{zoom:1;margin:0;break-after:page;page-break-after:always}
+  .sheet-wrap:last-child{break-after:auto;page-break-after:auto}
+  .sheet{box-shadow:none}
+}
+</style>
+<header class="head"><div><h1>Word Flash Card Maker</h1><p>Flash cards and vocabulary worksheets, laid out for US Letter paper.</p></div>
+ <nav class="tabs" aria-label="Sections"><button type="button" data-tab="cards" aria-selected="true">Flash cards</button><button type="button" data-tab="sheets" aria-selected="false">Worksheets</button></nav></header>
+<div class="app" id="cardView">
+ <aside class="panel">
+  <section class="step">
+   <h2><span class="n">1</span>Card size</h2>
+   <label class="field"><span>Preset</span><select id="preset"><option value="tcg">TCG standard, 2.5 × 3.5 in</option><option value="sq3">Square, 3 × 3 in</option><option value="index">Index card, 3 × 5 in</option><option value="custom">Custom</option></select></label>
+   <div class="row2">
+    <label class="field"><span>Width (in)</span><input id="cw" type="number" step="0.05" min="0.5" max="8.5"></label>
+    <label class="field"><span>Height (in)</span><input id="ch" type="number" step="0.05" min="0.5" max="11"></label>
+   </div>
+   <div class="seg" role="group" aria-label="Orientation"><button data-orient="portrait">Vertical</button><button data-orient="landscape">Horizontal</button></div>
+   <label class="field"><span>Gap between cards <output data-for="gap"></output></span><input type="range" min="0" max="0.5" step="0.025" data-s="gap"></label>
+   <label class="field"><span>Corner radius <output data-for="rad"></output></span><input type="range" min="0" max="0.25" step="0.01" data-s="rad"></label>
+   <label class="check"><input type="checkbox" data-s="cut"> Dotted cut lines</label>
+   <label class="field"><span>Cut line position <output data-for="cutpos"></output></span><input type="range" min="-0.25" max="0.25" step="0.0125" data-s="cutpos"></label>
+   <label class="field"><span>Bleed past the cut line <output data-for="bleed"></output></span><input type="range" min="0" max="0.125" step="0.0125" data-s="bleed"></label>
+   <p class="note">Cut line position: positive moves the dotted line inside the card edge, negative moves it out into the gap. Use negative half the gap to cut through the middle. Bleed extends the card color past the cut line, so a slightly off cut shows no white edge.</p>
+   <div id="spec" class="spec"></div>
+  </section>
+  <section class="step">
+   <h2><span class="n">2</span>Cards</h2>
+   <div id="genWrap" class="gen">
+    <label class="field"><span>Describe a list to generate</span><textarea id="prompt" rows="2" placeholder="e.g. 9 Spanish words for food, beginner level"></textarea></label>
+    <div class="row2">
+     <label class="field"><span>How many</span><input id="count" type="number" min="1" max="36" value="9"></label>
+     <label class="check"><input id="replace" type="checkbox"> Replace current cards</label>
+    </div>
+    <button id="gen" class="btn primary" disabled>Generate list</button>
+    <div id="genMsg" class="note"></div>
+   </div>
+   <details><summary>Paste a list instead</summary>
+    <textarea id="paste" rows="4" placeholder="One card per line: word | definition | pronunciation&#10;apple | a round red or green fruit | AP-ul"></textarea>
+    <button id="import" class="btn">Import lines</button>
+    <div id="pasteMsg" class="note"></div>
+   </details>
+   <div class="list-head"><span id="count2">0 cards</span><span><button id="add" class="btn">Add card</button> <button id="clear" class="btn quiet">Clear all</button></span></div>
+   <p id="demoNote" class="note">Example cards are loaded. Edit them or clear them to start over.</p>
+   <div id="list" class="list"></div>
+   <div id="listMsg" class="note"></div>
+  </section>
+  <section class="step">
+   <h2><span class="n">3</span>Text and images</h2>
+   <label class="field"><span>Font</span><select id="font" data-s="font"></select></label>
+   <label class="field"><span>Word size <output data-for="wsize"></output></span><input type="range" min="6" max="22" step="1" data-s="wsize"></label>
+   <label class="field"><span>Back text size <output data-for="bsize"></output></span><input type="range" min="4" max="16" step="1" data-s="bsize"></label>
+   <label class="check"><input type="checkbox" data-s="bold"> Bold words</label>
+   <div class="seg" role="group" aria-label="Text alignment"><button data-align="left">Left</button><button data-align="center">Centered</button></div>
+   <label class="field"><span>Front word position</span><select data-s="fvalign"><option value="top">Top</option><option value="center">Center</option><option value="bottom">Bottom</option></select></label>
+   <label class="field"><span>Back text position</span><select data-s="bvalign"><option value="top">Top</option><option value="center">Center</option><option value="bottom">Bottom</option></select></label>
+   <label class="field"><span>Image position</span><select data-s="imgpos"><option value="front">Front, above the word</option><option value="back">Back, above the definition</option><option value="hidden">Hidden</option></select></label>
+   <label class="field"><span>Image height <output data-for="imgh"></output></span><input type="range" min="20" max="75" step="1" data-s="imgh"></label>
+   <label class="check"><input type="checkbox" data-s="showbword"> Show word on back</label>
+   <label class="check"><input type="checkbox" data-s="showpron"> Show pronunciation on back</label>
+   <div class="row2">
+    <label class="field"><span>Card color</span><input type="color" data-s="cardbg"></label>
+    <label class="field"><span>Text color</span><input type="color" data-s="ink"></label>
+   </div>
+  </section>
+  <section class="step">
+   <h2><span class="n">4</span>Print</h2>
+   <div class="seg" role="group" aria-label="Sheets to show"><button data-view="front">Fronts</button><button data-view="back">Backs</button><button data-view="both">Both</button></div>
+   <label class="check"><input type="checkbox" data-s="guides"> Show rulers and safe zone</label>
+   <label class="check"><input type="checkbox" data-s="backturn"> Turn each back card 180° (top-edge flip)</label>
+   <p class="note">Print on US Letter at 100% scale with no margins and no fit-to-page. "Both" lists each front sheet followed by its matching back. For two-sided printing, flip the paper along the long edge (left side). With the turn option on, each back card stays in the same spot as its front and turns 180°. The sheet still prints upright. For a long-edge flip (left side), turn the option off so the columns mirror instead.</p>
+   <button id="dlBtn" class="btn primary" hidden>Download printable file</button>
+   <div id="dlMsg" class="note"></div>
+  </section>
+ </aside>
+ <main class="stage"><div id="summary" class="summary"></div><div id="sheets"></div></main>
+</div>
+<div class="app" id="sheetView" hidden>
+ <aside class="panel">
+  <section class="step">
+   <h2><span class="n">1</span>Word sets</h2>
+   <div id="setTabs" class="chips"></div>
+   <div class="row2"><button id="setNew" class="btn" type="button">New set</button><button id="setDel" class="btn quiet" type="button">Delete set</button></div>
+   <div id="setMsg" class="note"></div>
+   <label class="field"><span>Set name (printed on the worksheet)</span><input id="setName" type="text" maxlength="60"></label>
+  </section>
+  <section class="step">
+   <h2><span class="n">2</span>Words in this set</h2>
+   <label class="field"><span>One word per line (commas work too) <output id="wsCount"></output></span><textarea id="wsWords" rows="8"></textarea></label>
+  </section>
+  <section class="step">
+   <h2><span class="n">3</span>Add high-frequency words</h2>
+   <div class="row2">
+    <label class="field"><span>How many</span><input id="hfCount" type="number" min="1" max="30" value="5"></label>
+    <label class="field"><span>From</span><select id="hfSrc"><option value="fry1">First 100</option><option value="fry2">Words 101 to 200</option><option value="both" selected>Both lists</option></select></label>
+   </div>
+   <button id="hfAdd" class="btn primary" type="button">Add random words to this set</button>
+   <button id="hfNew" class="btn" type="button">Make a new set of random words</button>
+   <div id="hfMsg" class="note"></div>
+   <p class="note">Words come from a built-in list of about 200 high-frequency words. Words already in the set are skipped.</p>
+  </section>
+  <section class="step">
+   <h2><span class="n">4</span>Worksheet type and layout</h2>
+   <label class="field"><span>Worksheet type</span><select data-w="wtype"><option value="full">Full practice: word, boxes, lines</option><option value="list">Word list: words only</option><option value="write">Write: definition or sentence</option></select></label>
+   <label class="field"><span>Word list columns (word list type) <output data-wfor="lcols"></output></span><input type="range" min="1" max="6" step="1" data-w="lcols"></label>
+   <label class="field"><span>Word list rows (word list type, 0 = fit the page) <output data-wfor="lrows"></output></span><input type="range" min="0" max="20" step="1" data-w="lrows"></label>
+   <label class="field"><span>Write line position (write type)</span><select data-w="wlayout"><option value="beside">Beside the word (definition)</option><option value="below">Below the word (sentence)</option></select></label>
+   <label class="check"><input type="checkbox" data-w="header"> Name and date line</label>
+   <div class="seg" role="group" aria-label="Seats per page"><button type="button" data-wseat="1">1 seat</button><button type="button" data-wseat="3">3 seats</button></div>
+   <p class="note">3 seats puts three sets side by side on one page. This applies to full practice sheets only; word list and write sheets use the full page width. The meaning and sentence lines show on 1-seat full practice pages only.</p>
+   <label class="field"><span>Practice boxes per word <output data-wfor="boxes"></output></span><input type="range" min="0" max="4" step="1" data-w="boxes"></label>
+   <label class="check"><input type="checkbox" data-w="meaning"> Meaning line</label>
+   <label class="check"><input type="checkbox" data-w="sentence"> Sentence line</label>
+   <label class="check"><input type="checkbox" data-w="numbers"> Number each row</label>
+   <label class="field"><span>Row height <output data-wfor="rowh"></output></span><input type="range" min="0.4" max="0.8" step="0.05" data-w="rowh"></label>
+   <label class="field"><span>Word position in row</span><select data-w="valign"><option value="top">Top</option><option value="center">Center</option><option value="bottom">Bottom</option></select></label>
+   <label class="field"><span>Word font</span><select id="wsFont" data-w="font"></select></label>
+   <label class="field"><span>Word size <output data-wfor="wsize"></output></span><input type="range" min="10" max="28" step="1" data-w="wsize"></label>
+  </section>
+  <section class="step">
+   <h2><span class="n">5</span>Print</h2>
+   <div class="seg" role="group" aria-label="Sets to print"><button type="button" data-wscope="one">This set</button><button type="button" data-wscope="all">All sets</button></div>
+   <p class="note">Each set starts on a new page. Print at 100% on Letter with no margins. Long sets continue on the next page.</p>
+   <button id="wsDl" class="btn primary" type="button" hidden>Download worksheets</button>
+   <div id="wsDlMsg" class="note"></div>
+  </section>
+ </aside>
+ <main class="stage"><div id="wsSummary" class="summary"></div><div id="wsSheets"></div></main>
+</div>
+<script>
+// Card model: {id, word, pron, back, img}. Front: word centered. Back: small word on top, definition, pronunciation.
+const KEY='flashcard-maker-v2';
+const FONT_URL='https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Lexend:wght@400;600;700&family=Merriweather:wght@400;700&family=Patrick+Hand&display=swap';
+const FONTS={'Atkinson Hyperlegible':"'Atkinson Hyperlegible', system-ui, sans-serif",'Lexend':"Lexend, system-ui, sans-serif",'Merriweather':"Merriweather, Georgia, serif",'Patrick Hand':"'Patrick Hand', cursive, sans-serif",'System sans':"system-ui, -apple-system, 'Segoe UI', sans-serif"};
+const PRESETS={tcg:[2.5,3.5],sq3:[3,3],index:[3,5]};
+const DEF={w:2.5,h:3.5,orient:'portrait',gap:0.125,rad:0.1,cut:true,bleed:0.0625,cutpos:0,fvalign:'center',bvalign:'top',showbword:true,font:'Atkinson Hyperlegible',wsize:15,bsize:8,bold:true,align:'center',imgpos:'front',imgh:50,showpron:true,cardbg:'#ffffff',ink:'#1b1d22',view:'both',guides:true,backturn:true};
+const fr=v=>+(+v).toFixed(4);
+const VA={top:'flex-start',center:'center',bottom:'flex-end'};
+const OUT={gap:v=>fmt(v)+' in',rad:v=>fmt(v)+' in',bleed:v=>fr(v)+' in',cutpos:v=>(v>0?'+':'')+fr(v)+' in',wsize:v=>v+'%',bsize:v=>v+'%',imgh:v=>v+'%'};
+const PAGE_W=8.5,PAGE_H=11;
+const SEED=[['Dolphin','DOL-fin','A smart sea mammal that swims in groups'],['Octopus','OK-toh-pus','A sea animal with eight arms and no bones'],['Seahorse','SEE-hors','A small fish that swims upright'],['Jellyfish','JEL-ee-fish','A soft, clear sea animal with stinging tentacles'],['Starfish','STAR-fish','A sea animal with a star-shaped body and five arms'],['Sea turtle','TUR-tul','A reptile that swims long distances to lay eggs'],['Pufferfish','PUFF-er-fish','A fish that puffs up with water when scared'],['Lobster','LOB-ster','An ocean animal with two large claws'],['Stingray','STING-ray','A flat fish with a long, thin tail']];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>+(+n).toFixed(3);
+const uid=()=>Math.random().toString(36).slice(2,9);
+let S={...DEF}, cards=[], demo=true;
+
+function layout(){
+  const w=S.w,h=S.h,g=S.gap,E=1e-9,ok=w>0&&h>0;
+  const cols=ok?Math.max(0,Math.floor((PAGE_W+g+E)/(w+g))):0;
+  const rows=ok?Math.max(0,Math.floor((PAGE_H+g+E)/(h+g))):0;
+  const gw=cols*w+Math.max(0,cols-1)*g, gh=rows*h+Math.max(0,rows-1)*g;
+  return {w,h,g,cols,rows,per:cols*rows,gw,gh,ox:(PAGE_W-gw)/2,oy:(PAGE_H-gh)/2};
+}
+
+function cardHTML(c,side,rot){
+  const ff=FONTS[S.font]||FONTS['Atkinson Hyperlegible'];
+  const bold=S.bold?700:400;
+  const img=c.img?`<img class="cimg" src="${c.img}" alt="" style="height:${S.imgh}%">`:'';
+  let inner='', just=VA[S.fvalign]||'center';
+  if(side==='front'){
+    const len=Math.max(1,c.word.length), wf=len>9?Math.max(.45,9/len):1;
+    if(S.imgpos==='front') inner+=img;
+    inner+=`<div class="cword" style="font-size:${S.wsize*wf}cqw;font-weight:${bold}">${esc(c.word)}</div>`;
+  }else{
+    just=VA[S.bvalign]||'flex-start';
+    if(S.imgpos==='back') inner+=img;
+    if(S.showbword) inner+=`<div class="cword cbword" style="font-size:${S.wsize*.42}cqw;font-weight:${bold}">${esc(c.word)}</div>`;
+    inner+=`<div class="cback" style="font-size:${S.bsize}cqw">${esc(c.back)}</div>`;
+    if(S.showpron&&c.pron) inner+=`<div class="cpron" style="font-size:${S.bsize*.85}cqw">${esc(c.pron)}</div>`;
+  }
+  return `<div class="card" style="background:${S.cardbg};color:${S.ink};font-family:${ff};border-radius:${S.rad}in;align-items:${S.align==='left'?'flex-start':'center'};text-align:${S.align};justify-content:${just};${rot?'transform:rotate(180deg);':''}">${inner}</div>`;
+}
+
+// A slot holds the trim-size card, a bleed layer that extends the card color past the cut line, and the dotted cut line.
+function slotInner(c,side,rot){
+  const b=S.bleed;
+  const bleed=b>0?`<div class="bleed" style="inset:${fr(-b)}in;background:${S.cardbg};border-radius:${fr(S.rad+b)}in"></div>`:'';
+  const cut=S.cut?`<div class="cutline" style="inset:${fr(S.cutpos)}in;border-radius:${fr(Math.max(0,S.rad-S.cutpos))}in"></div>`:'';
+  return bleed+cardHTML(c,side,rot)+cut;
+}
+function gridHTML(L,side,p){
+  const start=p*L.per; let slots='';
+  for(let r=0;r<L.rows;r++)for(let c=0;c<L.cols;c++){
+    // Each back sits in the same spot as its front. With the turn option each card turns 180 degrees. Without it, columns mirror for a long-edge flip.
+    const flip=side==='back'&&S.backturn;
+    const k=side==='front'||flip?r*L.cols+c:r*L.cols+(L.cols-1-c);
+    const card=cards[start+k];
+    slots+=`<div class="slot">${card?slotInner(card,side,flip):''}</div>`;
+  }
+  return `<div class="grid" style="left:${fmt(L.ox)}in;top:${fmt(L.oy)}in;grid-template-columns:repeat(${L.cols},${fmt(L.w)}in);grid-template-rows:repeat(${L.rows},${fmt(L.h)}in);gap:${fmt(L.g)}in">${slots}</div>`;
+}
+
+const ticks=(total,vert)=>Array.from({length:Math.round(total*2)+1},(_,i)=>{const x=i/2,whole=i%2===0,pos=vert?`top:${x}in`:`left:${x}in`,len=whole?6:3;return `<i style="${pos};${vert?`width:${len}px`:`height:${len}px`}"></i>${whole?`<b style="${pos}">${x}</b>`:''}`}).join('');
+
+function sheetWrap(L,side,p,total){
+  const n=cards.slice(p*L.per,(p+1)*L.per).length;
+  const rulers=S.guides?`<div class="rx no-print">${ticks(PAGE_W,false)}</div><div class="ry no-print">${ticks(PAGE_H,true)}</div>`:'';
+  const safe=S.guides?'<div class="safe no-print"></div>':'';
+  return `<section class="sheet-wrap"><div class="label"><span>${side==='front'?'Fronts':'Backs'} · page ${p+1} of ${total}</span><span>${n} card${n===1?'':'s'}</span></div><div class="sheet-row">${rulers}<div class="sheet">${gridHTML(L,side,p)}${safe}</div></div></section>`;
+}
+
+function renderSheets(){
+  const L=layout(), box=$('#sheets');
+  if(!L.per){ box.innerHTML='<div class="empty">This card does not fit on Letter paper at this size. Make it smaller.</div>'; return; }
+  if(!cards.length){ box.innerHTML='<div class="empty">No cards yet. Add cards on the left, generate a list, or paste one in.</div>'; return; }
+  const pages=Math.ceil(cards.length/L.per), seq=[];
+  for(let p=0;p<pages;p++){ if(S.view!=='back')seq.push(['front',p]); if(S.view!=='front')seq.push(['back',p]); }
+  box.innerHTML=seq.map(([s,p])=>sheetWrap(L,s,p,pages)).join('');
+}
+
+function renderSummary(){
+  const L=layout(), el=$('#summary');
+  if(!L.per){ el.innerHTML=`<span class="warn">A ${fmt(S.w)} × ${fmt(S.h)} in card is too large for an 8.5 × 11 in page.</span>`; return; }
+  const pages=cards.length?Math.ceil(cards.length/L.per):0;
+  el.innerHTML=`<span><b>${cards.length}</b> cards · <b>${pages}</b> page${pages===1?'':'s'} per side</span>`+
+    `<span><b>${fmt(S.w)} × ${fmt(S.h)}</b> in ${S.orient}</span>`+
+    `<span><b>${L.cols} × ${L.rows}</b> = ${L.per} per page</span>`+
+    `<span>margins <b>${fmt(L.ox)}</b> side · <b>${fmt(L.oy)}</b> top and bottom in</span>`+
+    `<span>gap <b>${fmt(L.g)}</b> in</span>`+
+    `<span>bleed <b>${fr(S.bleed)}</b> in · cut line <b>${S.cutpos>0?'+':''}${fr(S.cutpos)}</b> in</span>`;
+}
+
+function renderSpec(){
+  const L=layout(), k=Math.min(118/S.w,110/S.h), W=S.w*k, H=S.h*k, pad=28;
+  const lab="font:500 11px 'IBM Plex Mono',monospace";
+  $('#spec').innerHTML=`<svg width="${W+pad*2}" height="${H+pad*2}" viewBox="0 0 ${W+pad*2} ${H+pad*2}" role="img" aria-label="Card ${fmt(S.w)} by ${fmt(S.h)} inches">`+
+    (S.bleed>0?`<rect x="${pad-S.bleed*k}" y="${pad-S.bleed*k}" width="${W+2*S.bleed*k}" height="${H+2*S.bleed*k}" rx="${(S.rad+S.bleed)*k}" style="fill:none;stroke:var(--muted);stroke-width:1;stroke-dasharray:2 2"/>`:'')+
+    `<rect x="${pad}" y="${pad}" width="${W}" height="${H}" rx="${S.rad*k}" style="fill:${S.cardbg};stroke:var(--accent);stroke-width:1.2"/>`+
+    (S.cut?`<rect x="${pad+S.cutpos*k}" y="${pad+S.cutpos*k}" width="${W-2*S.cutpos*k}" height="${H-2*S.cutpos*k}" rx="${Math.max(0,S.rad-S.cutpos)*k}" style="fill:none;stroke:var(--ink);stroke-width:1.6;stroke-dasharray:0.1 3;stroke-linecap:round"/>`:'')+
+    `<line x1="${pad}" y1="${pad+H+10}" x2="${pad+W}" y2="${pad+H+10}" style="stroke:var(--muted)"/>`+
+    `<text x="${pad+W/2}" y="${pad+H+22}" text-anchor="middle" style="fill:var(--ink);${lab}">${fmt(S.w)} in</text>`+
+    `<line x1="${pad-10}" y1="${pad}" x2="${pad-10}" y2="${pad+H}" style="stroke:var(--muted)"/>`+
+    `<text transform="translate(${pad-16} ${pad+H/2}) rotate(-90)" text-anchor="middle" style="fill:var(--ink);${lab}">${fmt(S.h)} in</text>`+
+    `</svg><p>${L.cols} across × ${L.rows} down<br>${L.per} cards per Letter page</p>`;
+}
+
+function fitSheets(){
+  for(const id of ['#sheets','#wsSheets']){
+    const el=$(id); if(!el||!el.clientWidth) continue;
+    el.style.setProperty('--z',Math.max(.3,Math.min(1,(el.clientWidth-44)/816)).toFixed(3));
+  }
+}
+
+function renderAll(){ renderSpec(); renderSummary(); renderSheets(); fitSheets(); }
+
+const SHEET_CSS=`.sheet{position:relative;width:8.5in;height:11in;background:#fff;color:#14171d;overflow:hidden}
+.grid{position:absolute;display:grid}
+.slot{position:relative;min-width:0;min-height:0}
+.card{position:relative;box-sizing:border-box;width:100%;height:100%;padding:.12in;overflow:hidden;display:flex;flex-direction:column;container-type:inline-size}
+.bleed,.cutline{position:absolute;pointer-events:none}
+.cutline{box-sizing:border-box;border:.75pt dotted #6b7280}
+.bleed,.card{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cimg{display:block;flex:0 0 auto;max-width:92%;object-fit:contain;margin:0 0 .08in}
+.cword,.cback,.cpron{max-width:100%;overflow-wrap:anywhere;hyphens:auto}
+.cword{line-height:1.08}
+.cbword{margin-bottom:.06in}
+.cback{line-height:1.3}
+.cpron{margin-top:.08in;font-style:italic;line-height:1.2}`;
+function matchPreset(){
+  for(const [k,[a,b]] of Object.entries(PRESETS)){
+    const [x,y]=S.orient==='landscape'?[b,a]:[a,b];
+    if(Math.abs(x-S.w)<.001&&Math.abs(y-S.h)<.001) return k;
+  }
+  return 'custom';
+}
+
+function syncControls(){
+  $('#preset').value=matchPreset();
+  $('#cw').value=fmt(S.w); $('#ch').value=fmt(S.h);
+  document.querySelectorAll('[data-orient]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.orient===S.orient)));
+  document.querySelectorAll('[data-align]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.align===S.align)));
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===S.view)));
+  document.querySelectorAll('[data-s]').forEach(el=>{const k=el.dataset.s; if(el.type==='checkbox') el.checked=!!S[k]; else el.value=S[k];});
+  document.querySelectorAll('output[data-for]').forEach(o=>{const k=o.dataset.for; o.textContent=OUT[k]?OUT[k](S[k]):S[k];});
+}
+
+function touch(){ syncControls(); renderAll(); save(); }
+let raf=0;
+const soon=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(renderSheets); };
+
+document.querySelectorAll('[data-s]').forEach(el=>el.addEventListener('input',()=>{
+  const k=el.dataset.s;
+  S[k]=el.type==='checkbox'?el.checked:(el.type==='range'?+el.value:el.value);
+  touch();
+}));
+$('#preset').addEventListener('change',e=>{
+  const p=PRESETS[e.target.value]; if(!p) return;
+  const [a,b]=p; if(S.orient==='landscape'){S.w=b;S.h=a}else{S.w=a;S.h=b}
+  touch();
+});
+['cw','ch'].forEach(id=>$('#'+id).addEventListener('change',e=>{
+  const v=Math.min(id==='cw'?8.5:11,Math.max(.5,+e.target.value));
+  if(!(v>0)) return;
+  if(id==='cw') S.w=v; else S.h=v;
+  touch();
+}));
+document.querySelectorAll('[data-orient]').forEach(b=>b.addEventListener('click',()=>{
+  const o=b.dataset.orient;
+  if(o!==S.orient){ [S.w,S.h]=[S.h,S.w]; S.orient=o; }
+  touch();
+}));
+document.querySelectorAll('[data-align]').forEach(b=>b.addEventListener('click',()=>{ S.align=b.dataset.align; touch(); }));
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{ S.view=b.dataset.view; touch(); }));
+
+function renderList(){
+  $('#list').innerHTML=cards.map((c,i)=>`<div class="row" data-id="${c.id}">
+    <span class="idx">${i+1}</span>
+    <div class="fields">
+      <input class="w" aria-label="Word ${i+1}" value="${esc(c.word)}" placeholder="Word">
+      <input class="p" aria-label="Pronunciation ${i+1}" value="${esc(c.pron)}" placeholder="Pronunciation, e.g. DOL-fin">
+      <input class="b" aria-label="Definition ${i+1}" value="${esc(c.back)}" placeholder="Definition">
+    </div>
+    <label class="thumb" title="Add image">${c.img?`<img src="${c.img}" alt="">`:'<span>+ img</span>'}<input type="file" accept="image/*" class="f" hidden></label>
+    <button class="icon del" aria-label="Remove card">×</button>
+  </div>`).join('');
+  $('#count2').textContent=cards.length+(cards.length===1?' card':' cards');
+  $('#demoNote').hidden=!demo;
+}
+const list=$('#list');
+function markEdited(){ demo=false; $('#demoNote').hidden=true; }
+
+list.addEventListener('input',e=>{
+  const row=e.target.closest('.row'); if(!row) return;
+  const c=cards.find(x=>x.id===row.dataset.id); if(!c) return;
+  const t=e.target;
+  if(t.matches('.w')) c.word=t.value;
+  else if(t.matches('.p')) c.pron=t.value;
+  else if(t.matches('.b')) c.back=t.value;
+  else return;
+  markEdited(); soon(); save();
+});
+list.addEventListener('change',async e=>{
+  if(!e.target.matches('.f')) return;
+  const row=e.target.closest('.row'), c=cards.find(x=>x.id===row.dataset.id), f=e.target.files[0];
+  if(!c||!f) return;
+  try{ c.img=await toCardImage(f); markEdited(); renderList(); renderAll(); save(); }
+  catch(err){ $('#listMsg').textContent='That file could not be read as an image.'; }
+});
+list.addEventListener('click',e=>{
+  const del=e.target.closest('.del'); if(!del) return;
+  const row=del.closest('.row');
+  cards=cards.filter(x=>x.id!==row.dataset.id);
+  markEdited(); renderList(); renderAll(); save();
+});
+
+$('#add').addEventListener('click',()=>{
+  cards.push({id:uid(),word:'',pron:'',back:'',img:null});
+  markEdited(); renderList(); renderAll(); save();
+  list.querySelector('.row:last-child .w')?.focus();
+});
+let clearArm=0;
+$('#clear').addEventListener('click',e=>{
+  const b=e.currentTarget;
+  if(!clearArm){ b.textContent='Click again to clear'; clearArm=setTimeout(()=>{clearArm=0;b.textContent='Clear all'},4000); return; }
+  clearTimeout(clearArm); clearArm=0; b.textContent='Clear all';
+  cards=[]; markEdited(); renderList(); renderAll(); save();
+});
+$('#import').addEventListener('click',()=>{
+  const lines=$('#paste').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const add=lines.map(line=>{
+    let p=line.split(/\s*\|\s*|\t/);
+    if(p.length<2){ const m=line.match(/^(.+?)\s+[-–—:]\s+(.+)$/); if(m) p=[m[1],m[2]]; }
+    return {id:uid(),word:(p[0]||'').trim().slice(0,80),back:(p[1]||'').trim().slice(0,240),pron:(p[2]||'').trim().slice(0,80),img:null};
+  }).filter(c=>c.word);
+  if(!add.length){ $('#pasteMsg').textContent='Nothing to import. Put one card per line.'; return; }
+  cards=cards.concat(add); $('#paste').value='';
+  markEdited(); renderList(); renderAll(); save();
+  $('#pasteMsg').textContent=`Imported ${add.length} card${add.length===1?'':'s'}.`;
+});
+
+function toCardImage(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onerror=reject;
+    fr.onload=()=>{
+      const im=new Image();
+      im.onerror=reject;
+      im.onload=()=>{
+        const s=Math.min(1,480/Math.max(im.naturalWidth,im.naturalHeight));
+        const cv=document.createElement('canvas');
+        cv.width=Math.max(1,Math.round(im.naturalWidth*s)); cv.height=Math.max(1,Math.round(im.naturalHeight*s));
+        const x=cv.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,cv.width,cv.height);
+        x.drawImage(im,0,0,cv.width,cv.height);
+        resolve(cv.toDataURL('image/jpeg',.86));
+      };
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+const GEN_ERR={rate_limited:'Too many requests right now. Wait a minute and try again.',refused:'Claude declined that request. Try a different topic.',invalid_json:'The reply was not a usable list. Try again or reword the prompt.',prompt_too_large:'That prompt is too long. Shorten it.'};
+let sampleFn=null, dlFn=null;
+
+async function generate(){
+  const topic=$('#prompt').value.trim();
+  const n=Math.min(36,Math.max(1,Math.round(+$('#count').value||9)));
+  const msg=$('#genMsg'), btn=$('#gen');
+  if(!topic){ msg.className='note warn'; msg.textContent='Describe the list first, for example "9 Spanish words for food".'; return; }
+  btn.disabled=true; btn.textContent='Thinking…'; msg.className='note'; msg.textContent='Thinking…';
+  const ask=`Make a flashcard list for: ${topic}.\nReturn exactly ${n} items. Reply with only a JSON array of ${n} objects. Each object has "word" (the term, at most 4 words), "pron" (a simple pronunciation respelling, such as "ser-VEE-sah"), and "back" (a short definition or translation, at most 12 words). No other text.`;
+  try{
+    const data=await sampleFn.json(ask,{modelTier:'quick',cache:false});
+    const items=(Array.isArray(data)?data:[]).filter(x=>x&&typeof x.word==='string'&&x.word.trim()).slice(0,36).map(x=>({id:uid(),word:x.word.trim().slice(0,80),pron:String(x.pron??'').trim().slice(0,80),back:String(x.back??'').trim().slice(0,240),img:null}));
+    if(!items.length) throw {code:'invalid_json'};
+    cards=$('#replace').checked?items:cards.concat(items);
+    markEdited(); renderList(); renderAll(); save();
+    msg.textContent=`Added ${items.length} card${items.length===1?'':'s'}. Review them below.`;
+  }catch(e){
+    if(e?.code==='cancelled') return;
+    msg.className='note warn';
+    msg.textContent=GEN_ERR[e?.code]||'Could not generate that list. Try again.';
+  }finally{
+    btn.disabled=false; btn.textContent='Generate list';
+  }
+}
+
+const DL_ERR={too_large:'The file is too large to save. Try fewer cards.',rejected_extension:'This file type is not allowed here.'};
+// Saves through the runtime capability when the page has it (claude.ai); otherwise a normal browser download, so a public copy still works.
+async function saveFile(filename,data){
+  if(dlFn) return dlFn.save({filename,data});
+  const url=URL.createObjectURL(new Blob([data],{type:'text/html'}));
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function download(){
+  const msg=$('#dlMsg'), L=layout();
+  if(!cards.length||!L.per){ msg.className='note warn'; msg.textContent='Add cards that fit the page first.'; return; }
+  try{
+    await saveFile(`flashcards-${new Date().toISOString().slice(0,10)}.html`,printDoc());
+    msg.className='note'; msg.textContent='Saved. Open the file and print it at 100% on Letter paper.';
+  }catch(e){
+    if(e?.code==='declined') return;
+    msg.className='note warn';
+    msg.textContent=DL_ERR[e?.code]||'The file could not be saved here. Press Ctrl or Cmd+P to print this page instead.';
+  }
+}
+
+function printDoc(){
+  const L=layout(), pages=Math.ceil(cards.length/L.per), seq=[];
+  for(let p=0;p<pages;p++){ if(S.view!=='back')seq.push(['front',p]); if(S.view!=='front')seq.push(['back',p]); }
+  const body=seq.map(([s,p])=>`<div class="sheet">${gridHTML(L,s,p)}</div>`).join('');
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Word flash cards</title><link rel="stylesheet" href="${FONT_URL}"><style>@page{size:8.5in 11in;margin:0}html,body{margin:0;background:#fff;font-family:system-ui,sans-serif}${SHEET_CSS}.sheet{break-after:page;page-break-after:always;margin:0 auto}.sheet:last-child{break-after:auto;page-break-after:auto}@media screen{body{background:#cfd4dc;padding:24px 0}.sheet{margin:0 auto 24px;box-shadow:0 2px 10px rgba(0,0,0,.25)}}</style></head><body>${body}</body></html>`;
+}
+
+let saveT=0;
+function save(){
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>{ try{ localStorage.setItem(KEY,JSON.stringify({S,cards,demo})); }catch(e){} },350);
+}
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(d&&d.S&&Array.isArray(d.cards)){ S={...DEF,...d.S}; cards=d.cards.map(c=>({pron:'',img:null,...c})); demo=!!d.demo; return; }
+  }catch(e){}
+  S={...DEF};
+  cards=SEED.map(([w,p,b])=>({id:uid(),word:w,pron:p,back:b,img:null}));
+  demo=true;
+}
+
+async function askCap(n){ try{ const r=await window.claude?.use?.(n); return r||null; }catch(e){ return null; } }
+
+// ---------- Worksheets ----------
+const WS_KEY='flashcard-maker-ws-v1';
+const FRY1='the of and a to in is you that it he was for on are as with his they I at be this have from or one had by word but not what all were we when your can said there use an each which she do how their if will up other about out many then them these so some her would make like him into time has look two more write go see number no way could people my than first water been call who oil its now find long down day did get come made may part';
+const FRY2='over new sound take only little work know place year live me back give most very after thing our just name good sentence man think say great where help through much before line right too mean old any same tell boy follow came want show also around form three small set put end does another well large must big even such because turn here why ask went men read need land different home us move try kind hand picture again change off play spell air away animal house point page letter mother answer found study still learn should world';
+const uniqWords=arr=>{const seen=new Set();return arr.filter(w=>{const k=w.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});};
+const HFW={fry1:uniqWords(FRY1.split(' ')),fry2:uniqWords(FRY2.split(' '))};
+HFW.both=uniqWords([...HFW.fry1,...HFW.fry2]);
+const WSDEF={boxes:3,meaning:true,sentence:true,numbers:true,rowh:0.55,font:'Atkinson Hyperlegible',wsize:16,valign:'center',seats:3,wtype:'full',wlayout:'beside',header:true,lcols:3,lrows:0};
+// Each column of the template sheet becomes one set (16 words each).
+const WS_SEED=[
+ ["always","believe","don't","goes","pull","wish","why","who","word","them","their","theme","trait","resolution","attitude","familiar"],
+ ["because","best","found","its","tell","upon","how","what","work","the","this","moral","perspective","consequence","commotion","frustrated"],
+ ["before","does","gave","made","their","once","then","when","the","these","lesson","conflict","annoyed","cranky","selfish","specialty"]
+];
+const WS_CSS=`.wspage{width:8.5in;height:11in;padding:.5in;box-sizing:border-box;display:flex;flex-direction:column;background:#fff;color:#14171d;overflow:hidden}
+.wshead{flex:0 0 1in;height:1in;display:flex;flex-direction:column;justify-content:flex-end;gap:.1in;border-bottom:1.2pt solid #14171d;padding-bottom:.08in;box-sizing:border-box}
+.wtitle{font:700 20pt/1.1 system-ui,sans-serif;overflow-wrap:anywhere}
+.wtitle small{font:400 11pt system-ui,sans-serif;color:#555}
+.wfields{display:flex;gap:.2in;align-items:flex-end;font:10.5pt system-ui,sans-serif}
+.wfill{flex:1 1 0;min-width:0;height:.22in;border-bottom:.6pt solid #14171d}
+.wfill.short{flex:0 0 1.6in}
+.wbody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.wrow{flex:0 0 var(--rowh,.55in);height:var(--rowh,.55in);display:flex;align-items:center;gap:.1in;border-bottom:.5pt solid #d6d9df;min-width:0}
+.wnum{flex:0 0 .3in;text-align:right;font:9pt system-ui,sans-serif;color:#666}
+.wword{flex:0 0 1.9in;min-width:0;overflow-wrap:anywhere;line-height:1.05}
+.wboxes{flex:0 0 auto;display:flex;gap:.08in}
+.wbox{width:.72in;height:calc(var(--rowh,.55in) - .16in);border:.6pt dashed #8d939e;border-radius:.03in}
+.wline{flex:1 1 0;min-width:0;height:0;border-bottom:.6pt solid #8d939e}
+.wsheet{position:relative;width:8.5in;height:11in;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);overflow:hidden}
+.wspage.wseats{flex-direction:row;gap:.2in}
+.wseat{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column}
+.wseats .wtitle{font-size:13pt}
+.wseats .wfields{gap:.08in}
+.wseats .wfill{flex:1 1 0;min-width:.3in}
+.wseats .wfill.short{flex:0 0 .7in}
+.wseats .wnum{flex:0 0 .22in}
+.wseats .wrow{gap:.06in}
+.wseats .wword{flex:1 1 0;min-width:0}
+.wseats .wbox{width:.34in}
+.wseats .wboxes{gap:.05in}
+.wlist{display:grid;grid-template-columns:repeat(var(--lcols,3),minmax(0,1fr));grid-template-rows:repeat(var(--lrowsn,1),minmax(0,1fr));column-gap:.35in}
+.wcell{display:flex;min-width:0;padding:0 .08in;overflow-wrap:anywhere;line-height:1.05}
+.wstack{flex:1 1 0;min-width:0;align-self:stretch;display:flex;flex-direction:column;justify-content:space-between;padding:.06in 0}
+.wstack .wword{flex:0 0 auto;width:auto}
+.wstack .wline{flex:0 0 auto}`;
+const WFOR={boxes:v=>v,rowh:v=>v+' in',wsize:v=>v+' pt',lcols:v=>v+(v===1?' column':' columns'),lrows:v=>v>0?v+' rows':'fit page'};
+let WS={sets:[],cur:null,scope:'one',opt:{...WSDEF}};
+let wsT=0, wsRaf=0, delArm=0;
+const wsCur=()=>WS.sets.find(s=>s.id===WS.cur)||WS.sets[0];
+// Rows that fit in the 9 in body of a Letter page (10 in printable height minus a 1 in header).
+const wsPer=o=>Math.max(1,Math.floor(9.0/o.rowh+1e-6));
+// Full practice sheets use 3 seats per page when the seat option is 3. Word lists and write sheets always use the full page width.
+const wsCount=o=>o.wtype==='full'&&o.seats!==1?3:1;
+// Rows per printed part for a word list: the chosen row count, or as many as fit the page (capped at the page height).
+const wsLRows=(o,per)=>o.lrows>0?Math.min(o.lrows,per):per;
+// Words per printed part: a word list holds rows times columns, otherwise the seat holds its rows.
+const wsCap=(o,per)=>o.wtype==='list'?wsLRows(o,per)*o.lcols:per;
+const wsSoon=()=>{cancelAnimationFrame(wsRaf);wsRaf=requestAnimationFrame(wsRender);};
+function wsSave(){clearTimeout(wsT);wsT=setTimeout(()=>{try{localStorage.setItem(WS_KEY,JSON.stringify(WS));}catch(e){}},350);}
+function wsLoad(){
+  try{
+    const d=JSON.parse(localStorage.getItem(WS_KEY)||'null');
+    if(d&&Array.isArray(d.sets)&&d.sets.length&&d.sets.every(s=>Array.isArray(s.words)))
+      WS={sets:d.sets,cur:d.cur,scope:d.scope==='all'?'all':'one',opt:{...WSDEF,...(d.opt||{})}};
+  }catch(e){}
+  if(!WS.sets.length) WS={sets:WS_SEED.map((w,i)=>({id:uid(),name:'Set '+(i+1),words:w.slice()})),cur:null,scope:'one',opt:{...WSDEF}};
+  if(!WS.sets.some(s=>s.id===WS.cur)) WS.cur=WS.sets[0].id;
+}
+// One seat: the header and rows for one part of one set. In 3-seat pages the seat is a column, so it uses a smaller word size and omits the meaning and sentence lines.
+function wsSeatHTML(s,o,p,n,per,seat){
+  if(o.wtype!=='full') return wsAltSeatHTML(s,o,p,n,per);
+  const start=(p-1)*per, items=s.words.slice(start,start+per);
+  const boxes='<span class="wbox"></span>'.repeat(o.boxes);
+  const size=seat?Math.min(o.wsize,13):o.wsize;
+  const rows=items.map((w,i)=>`<div class="wrow">${o.numbers?`<span class="wnum">${start+i+1}</span>`:''}<span class="wword" style="font-family:${FONTS[o.font]||FONTS['System sans']};font-size:${size}pt;align-self:${VA[o.valign]||'center'}">${esc(w)}</span>${o.boxes?`<span class="wboxes">${boxes}</span>`:''}${!seat&&o.meaning?'<span class="wline"></span>':''}${!seat&&o.sentence?'<span class="wline"></span>':''}</div>`).join('');
+  const head=o.header?`<div class="wshead"><div class="wtitle">${esc(s.name||'Vocabulary')}${n>1?` <small>page ${p} of ${n}</small>`:''}</div><div class="wfields"><span>Name</span><span class="wfill"></span><span>Date</span><span class="wfill short"></span></div></div>`:'';
+  return head+`<div class="wbody" style="--rowh:${o.rowh}in">${rows}</div>`;
+}
+// Word list and write sheets. A word list packs three columns of words. A write sheet gives each word one writing line, beside it (for a definition) or below it (for a sentence).
+function wsAltSeatHTML(s,o,p,n,per){
+  const cap=wsCap(o,per), start=(p-1)*cap, items=s.words.slice(start,start+cap);
+  const fz=`font-family:${FONTS[o.font]||FONTS['System sans']};font-size:${o.wsize}pt`;
+  const va=`align-self:${VA[o.valign]||'center'}`;
+  const head=o.header?`<div class="wshead"><div class="wtitle">${esc(s.name||'Vocabulary')}${n>1?` <small>page ${p} of ${n}</small>`:''}</div><div class="wfields"><span>Name</span><span class="wfill"></span><span>Date</span><span class="wfill short"></span></div></div>`:'';
+  if(o.wtype==='list'){
+    // Narrow columns get a smaller word size so longer words do not break mid-word.
+    const lsz=o.lcols>=6?Math.min(o.wsize,12):o.lcols>=5?Math.min(o.wsize,13):o.wsize;
+    const cells=items.map(w=>`<div class="wcell"><span style="font-family:${FONTS[o.font]||FONTS['System sans']};font-size:${lsz}pt;${va}">${esc(w)}</span></div>`).join('');
+    // The rows share the full page height, so a short list still fills the page.
+    const rowsN=Math.max(1,Math.ceil(items.length/o.lcols));
+    return head+`<div class="wbody wlist" style="--lcols:${o.lcols};--lrowsn:${rowsN};column-gap:${o.lcols>=5?'.15in':'.35in'}">${cells}</div>`;
+  }
+  const rows=items.map((w,i)=>{
+    const num=o.numbers?`<span class="wnum">${start+i+1}</span>`:'';
+    if(o.wlayout==='below') return `<div class="wrow">${num}<div class="wstack"><span class="wword" style="${fz}">${esc(w)}</span><span class="wline"></span></div></div>`;
+    return `<div class="wrow">${num}<span class="wword" style="${fz};${va}">${esc(w)}</span><span class="wline"></span></div>`;
+  }).join('');
+  return head+`<div class="wbody" style="--rowh:${o.rowh}in">${rows}</div>`;
+}
+// A printed page holds one seat at full width, or three seats side by side (one set part per seat).
+function wsPageHTML(group,o,per){
+  if(wsCount(o)===1){ const it=group[0]; return `<div class="wspage">${wsSeatHTML(it.s,o,it.p,it.n,per,false)}</div>`; }
+  let cols='';
+  for(let k=0;k<3;k++){ const it=group[k]; cols+=`<div class="wseat">${it?wsSeatHTML(it.s,o,it.p,it.n,per,true):''}</div>`; }
+  return `<div class="wspage wseats">${cols}</div>`;
+}
+// Each set is split into page-sized parts, and the parts are grouped onto pages by seat count.
+function wsPages(sets){
+  const o=WS.opt, per=wsPer(o), seats=wsCount(o), cap=wsCap(o,per), items=[], out=[];
+  for(const s of sets){
+    if(!s.words.length) continue;
+    const n=Math.ceil(s.words.length/cap);
+    for(let p=1;p<=n;p++) items.push({s,p,n});
+  }
+  for(let i=0;i<items.length;i+=seats){
+    const group=items.slice(i,i+seats);
+    out.push({items:group,html:wsPageHTML(group,o,per)});
+  }
+  return out;
+}
+function renderChips(){
+  $('#setTabs').innerHTML=WS.sets.map((s,i)=>`<button type="button" data-set="${s.id}" aria-pressed="${s.id===wsCur().id}">${esc(s.name||'Set '+(i+1))} <span>${s.words.length}</span></button>`).join('');
+}
+function wsOutputs(){ document.querySelectorAll('[data-wfor]').forEach(out=>{const k=out.dataset.wfor; out.textContent=WFOR[k](WS.opt[k]);}); }
+function wsSyncForm(){
+  const s=wsCur(), o=WS.opt;
+  $('#setName').value=s.name||'';
+  $('#wsWords').value=s.words.join('\n');
+  $('#wsCount').textContent=s.words.length+(s.words.length===1?' word':' words');
+  document.querySelectorAll('[data-w]').forEach(el=>{const k=el.dataset.w; if(el.type==='checkbox') el.checked=!!o[k]; else el.value=o[k];});
+  document.querySelectorAll('[data-wscope]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.wscope===WS.scope)));
+  document.querySelectorAll('[data-wseat]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.wseat===WS.opt.seats)));
+  wsOutputs();
+}
+function wsRender(){
+  const set=wsCur(), per=wsPer(WS.opt);
+  const pages=wsPages(WS.scope==='all'?WS.sets:[set]);
+  $('#wsSummary').innerHTML=`<span><b>${set.words.length}</b> word${set.words.length===1?'':'s'} in this set</span><span>${WS.opt.wtype==='list'?`<b>${wsCap(WS.opt,per)}</b> words per page (${wsLRows(WS.opt,per)} rows × ${WS.opt.lcols} columns)`:`<b>${per}</b> rows per ${wsCount(WS.opt)===3?'seat':'page'}`}</span><span><b>${wsCount(WS.opt)}</b> seat${wsCount(WS.opt)===1?'':'s'} per page</span><span><b>${pages.length}</b> page${pages.length===1?'':'s'} to print</span>`;
+  renderChips();
+  const box=$('#wsSheets');
+  if(!pages.length){ box.innerHTML='<div class="empty">No words yet. Type words on the left, or add random high-frequency words.</div>'; return; }
+  box.innerHTML=pages.map((pg,i)=>`<section class="sheet-wrap"><div class="label"><span>${pg.items.map(it=>esc(it.s.name)+(it.n>1?` · page ${it.p} of ${it.n}`:'')).join(' | ')}</span><span>${i+1} of ${pages.length}</span></div><div class="wsheet">${pg.html}</div></section>`).join('');
+}
+function hfPick(n,exclude,src){
+  const pool=HFW[src].filter(w=>!exclude.has(w.toLowerCase()));
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  return pool.slice(0,n);
+}
+const hfCount=()=>Math.min(30,Math.max(1,Math.round(+$('#hfCount').value||5)));
+const setMsg=(id,text,warn)=>{const m=$(id);m.className=warn?'note warn':'note';m.textContent=text;};
+function showTab(t){
+  $('#cardView').hidden=t!=='cards'; $('#sheetView').hidden=t!=='sheets';
+  document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  fitSheets(); if(t==='sheets') wsRender();
+}
+function wsInit(){
+  $('#wsFont').innerHTML=Object.keys(FONTS).map(f=>`<option>${f}</option>`).join('');
+  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+  $('#setTabs').addEventListener('click',e=>{const b=e.target.closest('[data-set]'); if(!b) return; WS.cur=b.dataset.set; wsSyncForm(); wsRender(); wsSave();});
+  $('#setName').addEventListener('input',e=>{wsCur().name=e.target.value; wsSoon(); wsSave();});
+  $('#wsWords').addEventListener('input',e=>{
+    const s=wsCur(); s.words=e.target.value.split(/[\n,]+/).map(x=>x.trim().slice(0,60)).filter(Boolean);
+    $('#wsCount').textContent=s.words.length+(s.words.length===1?' word':' words');
+    wsSoon(); wsSave();
+  });
+  $('#setNew').addEventListener('click',()=>{
+    const s={id:uid(),name:'Set '+(WS.sets.length+1),words:[]};
+    WS.sets.push(s); WS.cur=s.id; wsSyncForm(); wsRender(); wsSave(); $('#wsWords').focus();
+  });
+  $('#setDel').addEventListener('click',e=>{
+    const b=e.currentTarget;
+    if(WS.sets.length<2){ setMsg('#setMsg','Keep at least one set.',true); return; }
+    if(!delArm){ b.textContent='Click again to delete'; delArm=setTimeout(()=>{delArm=0;b.textContent='Delete set';},4000); return; }
+    clearTimeout(delArm); delArm=0; b.textContent='Delete set';
+    const i=WS.sets.findIndex(s=>s.id===WS.cur); WS.sets.splice(i,1); WS.cur=WS.sets[Math.max(0,i-1)].id;
+    setMsg('#setMsg',''); wsSyncForm(); wsRender(); wsSave();
+  });
+  $('#hfAdd').addEventListener('click',()=>{
+    const s=wsCur(), picked=hfPick(hfCount(),new Set(s.words.map(w=>w.toLowerCase())),$('#hfSrc').value);
+    if(!picked.length){ setMsg('#hfMsg','Every word from that list is already in this set.',true); return; }
+    s.words=s.words.concat(picked); setMsg('#hfMsg','Added: '+picked.join(', ')+'.');
+    wsSyncForm(); wsRender(); wsSave();
+  });
+  $('#hfNew').addEventListener('click',()=>{
+    const picked=hfPick(hfCount(),new Set(),$('#hfSrc').value);
+    if(!picked.length){ setMsg('#hfMsg','No words available from that list.',true); return; }
+    const s={id:uid(),name:'Set '+(WS.sets.length+1),words:picked};
+    WS.sets.push(s); WS.cur=s.id; setMsg('#hfMsg','Made a new set with '+picked.length+' random words.');
+    wsSyncForm(); wsRender(); wsSave();
+  });
+  document.querySelectorAll('[data-w]').forEach(el=>el.addEventListener('input',()=>{
+    const k=el.dataset.w; WS.opt[k]=el.type==='checkbox'?el.checked:(el.type==='range'?+el.value:el.value);
+    wsOutputs(); wsSoon(); wsSave();
+  }));
+  document.querySelectorAll('[data-wscope]').forEach(b=>b.addEventListener('click',()=>{WS.scope=b.dataset.wscope; wsSyncForm(); wsRender(); wsSave();}));
+  document.querySelectorAll('[data-wseat]').forEach(b=>b.addEventListener('click',()=>{WS.opt.seats=+b.dataset.wseat; wsSyncForm(); wsRender(); wsSave();}));
+  $('#wsDl').addEventListener('click',wsDownload);
+}
+async function wsDownload(){
+  const msg=$('#wsDlMsg'), pages=wsPages(WS.scope==='all'?WS.sets:[wsCur()]);
+  if(!pages.length){ msg.className='note warn'; msg.textContent='Add words to a set first.'; return; }
+  try{
+    await saveFile(`worksheets-${new Date().toISOString().slice(0,10)}.html`,wsPrintDoc(pages.map(p=>p.html)));
+    msg.className='note'; msg.textContent='Saved. Open the file and print at 100% on Letter paper.';
+  }catch(e){
+    if(e?.code==='declined') return;
+    msg.className='note warn'; msg.textContent=DL_ERR[e?.code]||'The file could not be saved here. Press Ctrl or Cmd+P to print this page instead.';
+  }
+}
+function wsPrintDoc(pages){
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vocabulary worksheets</title><link rel="stylesheet" href="${FONT_URL}"><style>@page{size:8.5in 11in;margin:0}html,body{margin:0;background:#fff;font-family:system-ui,sans-serif}*{box-sizing:border-box}${WS_CSS}.wspage{break-after:page;page-break-after:always;margin:0 auto}.wspage:last-child{break-after:auto;page-break-after:auto}@media screen{body{background:#cfd4dc;padding:24px 0}.wspage{margin:0 auto 24px;box-shadow:0 2px 10px rgba(0,0,0,.25)}}</style></head><body>${pages.join('')}</body></html>`;
+}
+// ---------- end worksheets ----------
+const st=document.createElement('style'); st.textContent=SHEET_CSS+WS_CSS; document.head.append(st);
+$('#font').innerHTML=Object.keys(FONTS).map(f=>`<option>${f}</option>`).join('');
+$('#gen').addEventListener('click',generate);
+$('#dlBtn').addEventListener('click',download);
+window.addEventListener('resize',fitSheets);
+load(); syncControls(); renderList(); renderAll();
+wsLoad(); wsInit(); wsSyncForm(); wsRender();
+(async()=>{
+  sampleFn=await askCap('sample');
+  if(sampleFn){ $('#gen').disabled=false; } else { $('#genWrap').hidden=true; }
+  dlFn=await askCap('downloads');
+})();
+</script>
+
+</body></html>
