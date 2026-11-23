@@ -118,6 +118,12 @@ details .btn{margin-top:6px}
   <section class="step">
    <h2><span class="n">2</span>Cards</h2>
    <div id="genWrap" class="gen">
+    <label class="field"><span>AI provider</span><select id="aiProv"></select></label>
+    <p id="aiHelp" class="note"></p>
+    <label class="field" id="aiKeyRow"><span>API key (sent only to this provider)</span><input id="aiKey" type="password" autocomplete="off" placeholder="Paste your key"></label>
+    <label class="check" id="aiRememberRow"><input id="aiRemember" type="checkbox"> Remember key on this device (stored in this browser without encryption)</label>
+    <label class="field"><span>Model</span><input id="aiModel" type="text"></label>
+    <label class="field"><span>Server address</span><input id="aiUrl" type="text"></label>
     <label class="field"><span>Describe a list to generate</span><textarea id="prompt" rows="2" placeholder="e.g. 9 Spanish words for food, beginner level"></textarea></label>
     <div class="row2">
      <label class="field"><span>How many</span><input id="count" type="number" min="1" max="36" value="9"></label>
@@ -480,8 +486,89 @@ function toCardImage(file){
     fr.readAsDataURL(file);
   });
 }
-const GEN_ERR={rate_limited:'Too many requests right now. Wait a minute and try again.',refused:'Claude declined that request. Try a different topic.',invalid_json:'The reply was not a usable list. Try again or reword the prompt.',prompt_too_large:'That prompt is too long. Shorten it.'};
+const GEN_ERR={rate_limited:'Too many requests right now. Wait a minute and try again.',refused:'Claude declined that request. Try a different topic.',invalid_json:'The reply was not a usable list. Try again or reword the prompt.',prompt_too_large:'That prompt is too long. Shorten it.',no_model:'Type a model name for this provider.',no_key:'Paste an API key for this provider first.',network:'Could not reach that server. Check the server address and your connection. Local servers must allow this page (CORS).'};
 let sampleFn=null, dlFn=null;
+
+// AI providers. "openai" kind means an OpenAI-compatible /chat/completions endpoint, which covers most services and local servers.
+const AI_PROVS={
+  builtin:{label:'Built-in Claude (only on claude.ai)',kind:'builtin',help:'Uses the Claude built into claude.ai. No key needed.'},
+  anthropic:{label:'Claude (Anthropic API key, paid)',kind:'anthropic',url:'https://api.anthropic.com/v1',model:'claude-haiku-5-5',key:true,help:'Key from console.anthropic.com. The request goes straight from this browser to Anthropic.'},
+  openai:{label:'OpenAI (API key, paid)',kind:'openai',url:'https://api.openai.com/v1',model:'',key:true,help:'Key from platform.openai.com. Type a model name your account can use.'},
+  gemini:{label:'Google Gemini (free API key)',kind:'openai',url:'https://generativelanguage.googleapis.com/v1beta/openai',model:'gemini-2.5-flash',key:true,help:'Free key from aistudio.google.com. Free-tier limits apply. If the model name stops working, type a current one.'},
+  groq:{label:'Groq (free API key)',kind:'openai',url:'https://api.groq.com/openai/v1',model:'',key:true,help:'Free key from console.groq.com. Type one of the model names listed there.'},
+  openrouter:{label:'OpenRouter (free models with a key)',kind:'openai',url:'https://openrouter.ai/api/v1',model:'',key:true,help:'Free key from openrouter.ai. Model names ending in ":free" cost nothing.'},
+  mistral:{label:'Mistral (API key)',kind:'openai',url:'https://api.mistral.ai/v1',model:'',key:true,help:'Key from console.mistral.ai.'},
+  ollama:{label:'Local: Ollama (your computer)',kind:'openai',url:'http://localhost:11434/v1',model:'llama3.2',key:false,help:'Install Ollama, run "ollama pull llama3.2", and start it. To let this page reach it, set OLLAMA_ORIGINS to this page\'s address (for example https://purpleninjaradish.github.io) and restart Ollama.'},
+  lmstudio:{label:'Local: LM Studio (your computer)',kind:'openai',url:'http://localhost:1234/v1',model:'',key:false,help:'Load a model and start the local server in LM Studio. Type the model name it shows. Turn on CORS in its server settings.'},
+  local:{label:'Other local server (llama.cpp or any OpenAI-compatible)',kind:'openai',url:'http://localhost:8080/v1',model:'',key:false,help:'Any server with an OpenAI-compatible /chat/completions endpoint, such as llama.cpp server.'},
+};
+const AI_KEY='flashcard-ai-v1', AI_KEYNAME='flashcard-ai-key';
+
+// Returns the parsed JSON array from a model reply, tolerating code fences and surrounding prose.
+function parseJSONArray(t){
+  const s=String(t||'').replace(/```(?:json)?/gi,'');
+  const a=s.indexOf('['), b=s.lastIndexOf(']');
+  if(a<0||b<a) throw {code:'invalid_json'};
+  try{ return JSON.parse(s.slice(a,b+1)); }catch(e){ throw {code:'invalid_json'}; }
+}
+// Sends one prompt to the selected provider and returns the parsed list.
+async function aiJSON(ask){
+  const p=AI_PROVS[$('#aiProv').value];
+  if(p.kind==='builtin') return sampleFn.json(ask,{modelTier:'quick',cache:false});
+  const key=$('#aiKey').value.trim(), model=$('#aiModel').value.trim(), base=$('#aiUrl').value.trim().replace(/\/+$/,'');
+  if(!model) throw {code:'no_model'};
+  if(p.key&&!key) throw {code:'no_key'};
+  let r, text='';
+  try{
+    if(p.kind==='anthropic'){
+      r=await fetch(`${base}/messages`,{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:1024,messages:[{role:'user',content:ask}]})});
+    }else{
+      const headers={'content-type':'application/json'}; if(key) headers.authorization=`Bearer ${key}`;
+      r=await fetch(`${base}/chat/completions`,{method:'POST',headers,body:JSON.stringify({model,messages:[{role:'user',content:ask}],temperature:0.7})});
+    }
+  }catch(e){ throw {code:'network'}; }
+  if(!r.ok) throw {code:'http',status:r.status};
+  const body=await r.json();
+  if(p.kind==='anthropic') text=(body.content||[]).map(c=>c.text||'').join('');
+  else text=body.choices?.[0]?.message?.content||'';
+  return parseJSONArray(text);
+}
+function aiShow(){
+  const p=AI_PROVS[$('#aiProv').value];
+  $('#aiKeyRow').style.display=p.key?'':'none';
+  $('#aiRememberRow').style.display=p.key?'':'none';
+  $('#aiHelp').textContent=p.help||'';
+  $('#aiModel').placeholder=p.model||'model name';
+  $('#aiUrl').disabled=p.kind==='builtin';
+}
+function aiSave(){
+  const p=$('#aiProv').value, key=$('#aiKey').value.trim(), remember=$('#aiRemember').checked;
+  try{ localStorage.setItem(AI_KEY,JSON.stringify({prov:p,model:$('#aiModel').value,url:$('#aiUrl').value,remember})); }catch(e){}
+  try{
+    if(remember){ localStorage.setItem(AI_KEYNAME,key); sessionStorage.removeItem(AI_KEYNAME); }
+    else{ localStorage.removeItem(AI_KEYNAME); sessionStorage.setItem(AI_KEYNAME,key); }
+  }catch(e){}
+}
+function aiInit(){
+  const sel=$('#aiProv');
+  sel.innerHTML=Object.entries(AI_PROVS).filter(([k])=>k!=='builtin'||sampleFn).map(([k,p])=>`<option value="${k}">${p.label}</option>`).join('');
+  let saved={}; try{ saved=JSON.parse(localStorage.getItem(AI_KEY)||'{}')||{}; }catch(e){}
+  const ok=k=>AI_PROVS[k]&&(k!=='builtin'||sampleFn);
+  const pick=ok(saved.prov)?saved.prov:(sampleFn?'builtin':'gemini');
+  sel.value=pick;
+  let key=''; try{ key=localStorage.getItem(AI_KEYNAME)||sessionStorage.getItem(AI_KEYNAME)||''; }catch(e){}
+  $('#aiKey').value=key;
+  $('#aiRemember').checked=!!saved.remember;
+  $('#aiModel').value=saved.model??AI_PROVS[pick].model??'';
+  $('#aiUrl').value=saved.url??AI_PROVS[pick].url??'';
+  aiShow();
+  if(!window.__aiBound){
+    window.__aiBound=true;
+    sel.addEventListener('change',()=>{ const p=AI_PROVS[sel.value]; $('#aiModel').value=p.model||''; $('#aiUrl').value=p.url||''; aiShow(); aiSave(); });
+    ['#aiKey','#aiModel','#aiUrl'].forEach(s=>$(s).addEventListener('input',aiSave));
+    $('#aiRemember').addEventListener('change',()=>{ aiSave(); });
+  }
+}
 
 async function generate(){
   const topic=$('#prompt').value.trim();
@@ -491,7 +578,7 @@ async function generate(){
   btn.disabled=true; btn.textContent='Thinking…'; msg.className='note'; msg.textContent='Thinking…';
   const ask=`Make a flashcard list for: ${topic}.\nReturn exactly ${n} items. Reply with only a JSON array of ${n} objects. Each object has "word" (the term, at most 4 words), "pron" (a simple pronunciation respelling, such as "ser-VEE-sah"), and "back" (a short definition or translation, at most 12 words). No other text.`;
   try{
-    const data=await sampleFn.json(ask,{modelTier:'quick',cache:false});
+    const data=await aiJSON(ask);
     const items=(Array.isArray(data)?data:[]).filter(x=>x&&typeof x.word==='string'&&x.word.trim()).slice(0,36).map(x=>({id:uid(),word:x.word.trim().slice(0,80),pron:String(x.pron??'').trim().slice(0,80),back:String(x.back??'').trim().slice(0,240),img:null}));
     if(!items.length) throw {code:'invalid_json'};
     cards=$('#replace').checked?items:cards.concat(items);
@@ -500,7 +587,7 @@ async function generate(){
   }catch(e){
     if(e?.code==='cancelled') return;
     msg.className='note warn';
-    msg.textContent=GEN_ERR[e?.code]||'Could not generate that list. Try again.';
+    msg.textContent=GEN_ERR[e?.code]||(e?.code==='http'?`The provider replied with an error (${e.status}). Check the key, model name and server address.`:'Could not generate that list. Try again.');
   }finally{
     btn.disabled=false; btn.textContent='Generate list';
   }
@@ -774,7 +861,8 @@ load(); syncControls(); renderList(); renderAll();
 wsLoad(); wsInit(); wsSyncForm(); wsRender();
 (async()=>{
   sampleFn=await askCap('sample');
-  if(sampleFn){ $('#gen').disabled=false; } else { $('#genWrap').hidden=true; }
+  $('#gen').disabled=false;
+  aiInit();
   dlFn=await askCap('downloads');
 })();
 </script>
